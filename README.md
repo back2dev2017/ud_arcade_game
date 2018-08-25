@@ -6,8 +6,8 @@
 * [Instructions](#instructions)
 * [Code Notes](#code-notes)
 * [Contributing](#contributing)
-* [Dependencies](#Dependencies)
-* [References & Credits](#References-&-Credits)
+* [Dependencies](#dependencies)
+* [References & Credits](#references-&-credits)
 
 ## Purpose
 
