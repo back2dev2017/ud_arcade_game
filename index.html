@@ -6,6 +6,25 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <div id="msg_div">
+        <div id="win_rslt">
+            <p id="win_text1" class="win_msg">Congratulations</p>
+            <p class="win_msg">You made it to the water!</p>
+            <p class="win_info">Your time was <span id="game_time">0</span> seconds</p>
+            <p class="win_info">You collected <span id="treas_count">0</span> treasure(s)</p>
+        </div>
+        <div id="ouch_rslt">
+            <p id="ouch_main">Ouch!</p>
+            <p id="ouch_msg">Drat, a bug got you</p>
+        </div>
+        <div>
+            <button id="restart_btn">Play again</button>
+        </div>
+    </div>
+
+    <div id="timer_box">
+        Time: <span id="elapsed_time">0</span> secs
+    </div>
     <script src="js/resources.js"></script>
     <script src="js/app.js"></script>
     <script src="js/engine.js"></script>

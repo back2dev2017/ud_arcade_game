@@ -22,10 +22,13 @@ var Engine = (function(global) {
         win = global.window,
         canvas = doc.createElement('canvas'),
         ctx = canvas.getContext('2d'),
+        gamePause = false,
+        gameStart,
         lastTime;
 
     canvas.width = 505;
     canvas.height = 606;
+    canvas.setAttribute("id", "canvas_area");
     doc.body.appendChild(canvas);
 
     /* This function serves as the kickoff point for the game loop itself
@@ -45,17 +48,23 @@ var Engine = (function(global) {
          * our update function since it may be used for smooth animation.
          */
         update(dt);
+
+        // update timer - did not put withing update() because it purposed "dt", which we do not want to use'
+        document.getElementById("elapsed_time").innerText = `${((Date.now() - gameStart)/1000).toFixed(1)}`;
+
         render();
 
         /* Set our lastTime variable which is used to determine the time delta
          * for the next time this function is called.
          */
-        lastTime = now;
 
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        win.requestAnimationFrame(main);
+        if (gamePause === false) {
+            lastTime = now;
+            win.requestAnimationFrame(main);
+        }
     }
 
     /* This function does some initial setup that should only occur once,
@@ -79,7 +88,6 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
     }
 
     /* This is called by the update function and loops through all of the
@@ -93,7 +101,6 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
-        player.update();
     }
 
     /* This function initially draws the "game level", it will then call
@@ -137,8 +144,8 @@ var Engine = (function(global) {
                 ctx.drawImage(Resources.get(rowImages[row]), col * 101, row * 83);
             }
         }
-
         renderEntities();
+        checkHits();
     }
 
     /* This function is called by the render function and is called on each game
@@ -146,14 +153,84 @@ var Engine = (function(global) {
      * on your enemy and player entities within app.js
      */
     function renderEntities() {
+        // loop through treasures and render - do this first so bugs go "over" them
+        allTreasures.forEach(function(treas){
+            treas.render();
+        });
         /* Loop through all of the objects within the allEnemies array and call
          * the render function you have defined.
          */
         allEnemies.forEach(function(enemy) {
             enemy.render();
         });
-
         player.render();
+
+        if (player.won === true) {
+            // reached the water, want to pause the game, display a message, etc
+            let windiv = document.getElementById("msg_div");
+            let wintxt = document.getElementById("win_rslt");
+            let ouchtxt = document.getElementById("ouch_rslt");
+            let canele = document.getElementById("canvas_area");
+            windiv.style.left = canele.offsetLeft + "px";
+            wintxt.style.display = "flex";
+            ouchtxt.style.display = "none";
+            windiv.style.display = "flex";
+            gamePause = true;
+            document.getElementById("timer_box").classList.add("hidden");
+            document.getElementById("game_time").innerText = document.getElementById("elapsed_time").innerText;
+            document.getElementById("treas_count").innerText = player.numTreasures;
+        }
+    }
+
+    function checkHits() {
+        //   This checks to see if any of the bugs have hit our avatar. A simple check would be looking at the grid element (row/col) of
+        // bugs and avatar. But for visual appeal, will attempt to use direct comparison of image positions.
+        //   The image of the avatar is 101px wide and 171px tall. Not sure if this was an intentional bad design (the actual image is much
+        // smaller than that), or if this was a test for students to burn time looking at avatar details. But it significantly complicates
+        // the check for a "hit" (edges of image are not true edges of the actual avatar image). After working with an image editor it
+        // appears the avatars have an actual size of 77w x 85h. Centered horizontally but not vertically - it is about 60px from the top
+        // (really? <sigh>). The bug image is 75px from its top. How infuriating.... I was tempted to redo all the <bleep>ing graphics, 
+        // but it was unclear if this was allowed for the project. So after burning a TON of time messing with pixel offsets and crap, I
+        // decided to simply track the row/col values directly (e.g. row 3, col 2). The bugs just run across a row, so can simplify the
+        // check by row, and will do a little bit of pixel checking for left/right. Bugs are 101px wide
+        // 
+        allEnemies.forEach(function(bug) {
+            let bughit = false;
+            if (bug.runrow == player.nowrow) {
+                if ((bug.x <= player.xpos + 12 && bug.x + 101 >= player.xpos + 12) ||
+                    (bug.x <= player.xpos + 12 + 77 && bug.x + 101 >= player.xpos + 12 + 77) ||
+                    (bug.x >= player.xpos + 12 && bug.x + 101 <= player.xpos + 12 + 77)) {
+                        bughit = true;
+                        console.log('ouch');
+                    }
+            }
+            if (bughit === false) {
+                // no bug hit, see if the player grabbed a treasure
+                allTreasures.forEach(function(treas) {
+                    // check row/col position. if not already grabbed, set the treasure object to show grabbed and increment
+                    // the player treasure count
+                    if ((treas.row === player.nowrow && treas.col === player.nowcol) && 
+                        treas.grabbed === false) {
+                        treas.grabbed = true;
+                        player.numTreasures += 1;
+                    }
+                });
+            } else {
+                // well... got hit.... display a message for the user
+                let windiv = document.getElementById("msg_div");
+                let wintxt = document.getElementById("win_rslt");
+                let ouchtxt = document.getElementById("ouch_rslt");
+                let canele = document.getElementById("canvas_area");
+                windiv.style.left = canele.offsetLeft + "px";
+                wintxt.style.display = "none";
+                ouchtxt.style.display = "flex";
+                windiv.style.display = "flex";
+                gamePause = true;
+                document.getElementById("timer_box").classList.add("hidden");
+                // gotta reset the game
+                reset();
+            }
+        });
     }
 
     /* This function does nothing but it could have been a good place to
@@ -161,19 +238,29 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset() {
+        player.resetPos();
+        gameStart = Date.now();
+        genTreasures();
+        document.getElementById("timer_box").classList.remove("hidden");
         // noop
     }
 
-    /* Go ahead and load all of the images we know we're going to need to
-     * draw our game level. Then set init as the callback method, so that when
+    /* Go ahead and load all of the images we know we're going to need to draw our game level. Then set init as the callback method, so that when
      * all of these images are properly loaded our game will start.
+     * unclear some file names were capitalized with a space, bad consistency, so I renamed them (lowercase, hyphen)
      */
     Resources.load([
         'images/stone-block.png',
         'images/water-block.png',
         'images/grass-block.png',
         'images/enemy-bug.png',
-        'images/char-boy.png'
+        'images/char-boy.png',
+        'images/gem-green.png',
+        'images/gem-blue.png',
+        'images/gem-orange.png',
+        'images/heart.png',
+        'images/key.png',
+        'images/star.png',
     ]);
     Resources.onReady(init);
 
@@ -182,4 +269,13 @@ var Engine = (function(global) {
      * from within their app.js files.
      */
     global.ctx = ctx;
+
+    document.getElementById("restart_btn").addEventListener('click', function(evt) {
+        let windiv = document.getElementById("msg_div");
+        windiv.style.display = "none";
+        gamePause = false;
+        reset();
+        win.requestAnimationFrame(main);
+    });
+
 })(this);
