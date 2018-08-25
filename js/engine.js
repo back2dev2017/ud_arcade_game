@@ -233,9 +233,9 @@ var Engine = (function(global) {
         });
     }
 
-    /* This function does nothing but it could have been a good place to
-     * handle game reset states - maybe a new game menu or a game over screen
-     * those sorts of things. It's only called once by the init() method.
+    /* This function essentially resets objects and variables (re-randomizing in some cases). But note
+     * that it does NOT "start" the game again immediately. The button "restart_btn" click is where
+     * the game is restarted (refer to the .addEventListener for "restart_btn")
      */
     function reset() {
         player.resetPos();
